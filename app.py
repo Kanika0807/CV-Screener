@@ -139,7 +139,7 @@ if jd_file and cv_files:
             }
             return colors.get(val, "")
 
-        styled = df.style.applymap(color_verdict, subset=["Verdict"])
+        styled = df.style.map(color_verdict, subset=["Verdict"])
         st.dataframe(styled, use_container_width=True, hide_index=True)
 
         # Detailed cards
