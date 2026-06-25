@@ -56,25 +56,29 @@ Return a JSON object with exactly these fields:
 
 Return only valid JSON, no extra text.
 """
-    try:
-        response = model.generate_content(prompt)
-        text = response.text.strip()
-        if text.startswith("```"):
-            text = text.split("```")[1]
-            if text.startswith("json"):
-                text = text[4:]
-        result = json.loads(text)
-        result["candidate"] = candidate_name
-        return result
-    except Exception as e:
-        return {
-            "candidate": candidate_name,
-            "score": 0,
-            "verdict": "Error",
-            "top_strengths": "Could not parse",
-            "gaps": str(e),
-            "summary": "Screening failed for this CV."
-        }
+    for attempt in range(3):
+        try:
+            response = model.generate_content(prompt)
+            text = response.text.strip()
+            if text.startswith("```"):
+                text = text.split("```")[1]
+                if text.startswith("json"):
+                    text = text[4:]
+            result = json.loads(text)
+            result["candidate"] = candidate_name
+            return result
+        except Exception as e:
+            if attempt < 2:
+                time.sleep(10)
+            else:
+                return {
+                    "candidate": candidate_name,
+                    "score": 0,
+                    "verdict": "Error",
+                    "top_strengths": "Could not parse",
+                    "gaps": str(e),
+                    "summary": "Screening failed for this CV."
+                }
 
 
 # --- Upload Section ---
@@ -107,7 +111,7 @@ if jd_file and cv_files:
             cv_text = extract_text(cv_file)
             result = screen_cv(jd_text, cv_text, candidate_name)
             results.append(result)
-            time.sleep(0.5)  # avoid rate limiting
+            time.sleep(5)  # 5 sec delay to stay within free tier rate limit
 
         progress.progress(1.0, text="Screening complete!")
 
