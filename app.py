@@ -2,10 +2,9 @@ import streamlit as st
 import pandas as pd
 import pdfplumber
 import docx2txt
-import google.generativeai as genai
 import json
-import io
 import time
+from openai import OpenAI
 
 st.set_page_config(page_title="CV Screener", page_icon="📋", layout="wide")
 
@@ -13,15 +12,14 @@ st.title("📋 CV Screener")
 st.markdown("Upload a Job Description and multiple CVs to get ranked screening results.")
 
 # --- API Key ---
-api_key = st.secrets.get("GEMINI_API_KEY", None)
+api_key = st.secrets.get("OPENAI_API_KEY", None)
 if not api_key:
-    api_key = st.sidebar.text_input("Enter Gemini API Key", type="password")
+    api_key = st.sidebar.text_input("Enter OpenAI API Key", type="password")
 if not api_key:
-    st.warning("Please enter your Gemini API key in the sidebar to continue.")
+    st.warning("Please enter your OpenAI API key in the sidebar to continue.")
     st.stop()
 
-genai.configure(api_key=api_key)
-model = genai.GenerativeModel("gemini-2.0-flash")
+client = OpenAI(api_key=api_key)
 
 
 def extract_text(file) -> str:
@@ -58,18 +56,18 @@ Return only valid JSON, no extra text.
 """
     for attempt in range(3):
         try:
-            response = model.generate_content(prompt)
-            text = response.text.strip()
-            if text.startswith("```"):
-                text = text.split("```")[1]
-                if text.startswith("json"):
-                    text = text[4:]
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"}
+            )
+            text = response.choices[0].message.content.strip()
             result = json.loads(text)
             result["candidate"] = candidate_name
             return result
         except Exception as e:
             if attempt < 2:
-                time.sleep(10)
+                time.sleep(5)
             else:
                 return {
                     "candidate": candidate_name,
@@ -111,18 +109,16 @@ if jd_file and cv_files:
             cv_text = extract_text(cv_file)
             result = screen_cv(jd_text, cv_text, candidate_name)
             results.append(result)
-            time.sleep(5)  # 5 sec delay to stay within free tier rate limit
+            time.sleep(1)
 
         progress.progress(1.0, text="Screening complete!")
 
-        # Sort by score descending
         results.sort(key=lambda x: x.get("score", 0), reverse=True)
 
         st.success(f"Screened {total} CVs successfully!")
         st.markdown("---")
         st.subheader("📊 Ranked Results")
 
-        # Summary table
         df = pd.DataFrame([{
             "Rank": i + 1,
             "Candidate": r["candidate"],
@@ -146,7 +142,6 @@ if jd_file and cv_files:
         styled = df.style.map(color_verdict, subset=["Verdict"])
         st.dataframe(styled, use_container_width=True, hide_index=True)
 
-        # Detailed cards
         st.markdown("---")
         st.subheader("📄 Detailed Breakdown")
         for i, r in enumerate(results):
@@ -159,7 +154,6 @@ if jd_file and cv_files:
                     st.markdown(f"**Gaps:**\n{r['gaps']}")
                 st.markdown(f"**Summary:** {r['summary']}")
 
-        # Download CSV
         st.markdown("---")
         csv = df.to_csv(index=False).encode("utf-8")
         st.download_button(
