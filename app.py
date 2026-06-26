@@ -4,7 +4,7 @@ import pdfplumber
 import docx2txt
 import json
 import time
-from openai import OpenAI
+from groq import Groq
 
 st.set_page_config(page_title="CV Screener", page_icon="📋", layout="wide")
 
@@ -12,14 +12,12 @@ st.title("📋 CV Screener")
 st.markdown("Upload a Job Description and multiple CVs to get ranked screening results.")
 
 # --- API Key ---
-api_key = st.secrets.get("OPENAI_API_KEY", None)
+api_key = st.secrets.get("GROQ_API_KEY", None)
 if not api_key:
-    api_key = st.sidebar.text_input("Enter OpenAI API Key", type="password")
-if not api_key:
-    st.warning("Please enter your OpenAI API key in the sidebar to continue.")
+    st.error("API key not configured. Please contact the app administrator.")
     st.stop()
 
-client = OpenAI(api_key=api_key)
+client = Groq(api_key=api_key)
 
 
 def extract_text(file) -> str:
@@ -57,7 +55,7 @@ Return only valid JSON, no extra text.
     for attempt in range(3):
         try:
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="llama-3.3-70b-versatile",
                 messages=[{"role": "user", "content": prompt}],
                 response_format={"type": "json_object"}
             )
