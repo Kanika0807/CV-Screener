@@ -65,7 +65,7 @@ Return only valid JSON, no extra text.
             return result
         except Exception as e:
             if attempt < 2:
-                continue
+                time.sleep(3)
             else:
                 return {
                     "candidate": candidate_name,
@@ -107,6 +107,7 @@ if jd_file and cv_files:
             cv_text = extract_text(cv_file)
             result = screen_cv(jd_text, cv_text, candidate_name)
             results.append(result)
+            time.sleep(2)
 
         progress.progress(1.0, text="Screening complete!")
 
