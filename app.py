@@ -110,55 +110,64 @@ if jd_file and cv_files:
             time.sleep(2)
 
         progress.progress(1.0, text="Screening complete!")
-
         results.sort(key=lambda x: x.get("score", 0), reverse=True)
-
+        st.session_state["results"] = results
         st.success(f"Screened {total} CVs successfully!")
-        st.markdown("---")
+
+# --- Display Results (persists across page interactions) ---
+if "results" in st.session_state and st.session_state["results"]:
+    results = st.session_state["results"]
+
+    col_title, col_btn = st.columns([6, 1])
+    with col_title:
         st.subheader("📊 Ranked Results")
+    with col_btn:
+        if st.button("🗑️ Clear Results"):
+            del st.session_state["results"]
+            st.rerun()
 
-        df = pd.DataFrame([{
-            "Rank": i + 1,
-            "Candidate": r["candidate"],
-            "Score": r["score"],
-            "Verdict": r["verdict"],
-            "Top Strengths": r["top_strengths"],
-            "Gaps": r["gaps"],
-            "Summary": r["summary"],
-        } for i, r in enumerate(results)])
+    df = pd.DataFrame([{
+        "Rank": i + 1,
+        "Candidate": r["candidate"],
+        "Score": r["score"],
+        "Verdict": r["verdict"],
+        "Top Strengths": r["top_strengths"],
+        "Gaps": r["gaps"],
+        "Summary": r["summary"],
+    } for i, r in enumerate(results)])
 
-        def color_verdict(val):
-            colors = {
-                "Strong Match": "background-color: #d4edda; color: #155724",
-                "Good Match": "background-color: #cce5ff; color: #004085",
-                "Partial Match": "background-color: #fff3cd; color: #856404",
-                "Poor Match": "background-color: #f8d7da; color: #721c24",
-                "Error": "background-color: #e2e3e5; color: #383d41",
-            }
-            return colors.get(val, "")
+    def color_verdict(val):
+        colors = {
+            "Strong Match": "background-color: #d4edda; color: #155724",
+            "Good Match": "background-color: #cce5ff; color: #004085",
+            "Partial Match": "background-color: #fff3cd; color: #856404",
+            "Poor Match": "background-color: #f8d7da; color: #721c24",
+            "Error": "background-color: #e2e3e5; color: #383d41",
+        }
+        return colors.get(val, "")
 
-        styled = df.style.map(color_verdict, subset=["Verdict"])
-        st.dataframe(styled, use_container_width=True, hide_index=True)
+    styled = df.style.map(color_verdict, subset=["Verdict"])
+    st.dataframe(styled, use_container_width=True, hide_index=True)
 
-        st.markdown("---")
-        st.subheader("📄 Detailed Breakdown")
-        for i, r in enumerate(results):
-            verdict_emoji = {"Strong Match": "🟢", "Good Match": "🔵", "Partial Match": "🟡", "Poor Match": "🔴"}.get(r["verdict"], "⚪")
-            with st.expander(f"{i+1}. {r['candidate']} — Score: {r['score']}/100 {verdict_emoji} {r['verdict']}"):
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.markdown(f"**Top Strengths:**\n{r['top_strengths']}")
-                with c2:
-                    st.markdown(f"**Gaps:**\n{r['gaps']}")
-                st.markdown(f"**Summary:** {r['summary']}")
+    st.markdown("---")
+    st.subheader("📄 Detailed Breakdown")
+    for i, r in enumerate(results):
+        verdict_emoji = {"Strong Match": "🟢", "Good Match": "🔵", "Partial Match": "🟡", "Poor Match": "🔴"}.get(r["verdict"], "⚪")
+        with st.expander(f"{i+1}. {r['candidate']} — Score: {r['score']}/100 {verdict_emoji} {r['verdict']}"):
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown(f"**Top Strengths:**\n{r['top_strengths']}")
+            with c2:
+                st.markdown(f"**Gaps:**\n{r['gaps']}")
+            st.markdown(f"**Summary:** {r['summary']}")
 
-        st.markdown("---")
-        csv = df.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            label="⬇️ Download Results as CSV",
-            data=csv,
-            file_name="screening_results.csv",
-            mime="text/csv",
-            use_container_width=True,
-            type="primary"
-        )
+    st.markdown("---")
+    csv = df.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label="⬇️ Download Results as CSV",
+        data=csv,
+        file_name="screening_results.csv",
+        mime="text/csv",
+        use_container_width=True,
+        type="primary"
+    )
