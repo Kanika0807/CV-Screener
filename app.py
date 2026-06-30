@@ -49,7 +49,8 @@ Return a JSON object with exactly these fields:
   "gaps": "<2-3 key gaps or missing requirements>",
   "summary": "<2-3 sentence overall summary>",
   "email": "<candidate email address, or 'Not found' if not present>",
-  "phone": "<candidate phone number, or 'Not found' if not present>"
+  "phone": "<candidate phone number, or 'Not found' if not present>",
+  "companies": "<comma separated list of all companies the candidate has worked at>"
 }}
 
 Return only valid JSON, no extra text.
@@ -133,6 +134,7 @@ if "results" in st.session_state and st.session_state["results"]:
         "Candidate": r["candidate"],
         "Email": r.get("email", "Not found"),
         "Phone": r.get("phone", "Not found"),
+        "Companies Worked At": r.get("companies", "Not found"),
         "Score": r["score"],
         "Verdict": r["verdict"],
         "Top Strengths": r["top_strengths"],
